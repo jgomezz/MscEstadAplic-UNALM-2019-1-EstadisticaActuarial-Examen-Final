@@ -1,0 +1,263 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+##Ejercicios
+
+Para todos los casos utilice la tabla de mortalidad de la SBS y trabaje para el año 2019.
+
+
+```{r}
+# Se evita el uso de notación científica
+options(scipen=999)
+# Se cargan librerias
+library(lifecontingencies)
+# Se cargan tablas de mortandad de la SBS
+TablaSBS <- read.table("TMSPP2017.txt",T)
+attach(TablaSBS)
+#head(TablaSBS)
+```
+
+
+1.- Victor es un hombre sano de 34 años  ,el cual contrata un seguro por el que recibirá beneficios anuales de 12 mil soles de por vida, a partir de un año después de haber firmado la póliza. Si la tasa efectiva considerada por la aseguradora es del $0.6%$ mensual, determine el valor de la prima unitaria y prima real que debe pagar Victor.
+```{r}
+Tabla1 = probs2lifetable(probs = SPPS2017H*(1-AaxH)^(2), 
+                         radix = 10^6,   
+                         type = "qx",  
+                         name = "Tabla1")
+
+TEM = 0.6/100
+TEA = (1+TEM)^12-1
+a34 = axn(Tabla1, x = 34, i = TEA) - 1
+12000*a34 # 153030.7
+
+```
+
+2.- Lucas es un hombre inválido de 19 años, el cual un contrata un seguro por el que recibirá beneficios anuales de 18 mil soles, desde el momento en el que firma la póliza y por una cantidad máxima de 50 pagos. Si la TEA considerada por la aseguradora es del 2%, determine el valor de la prima unitaria y prima real que debe pagar Lucas.
+
+```{r}
+Tabla2 = probs2lifetable(probs = SPPI2017H*(1-AaxH)^(2), 
+                         radix = 10^6,   
+                         type = "qx",  
+                         name = "Tabla 2")
+a19.50 = axn(Tabla2, x = 19, n = 50, i = 0.02)
+18000*a19.50
+```
+
+3.- María, una mujer sana de 31 años, contrata un seguro por el que recibirá beneficios
+anuales de 15 mil soles, por un periodo máximo de 32 años (32 pagos) desde el
+momento en el que se cumple el primer aniversario de la firma de la póliza. Si la
+aseguradora trabaja con una tasa nominal anual de 5% capitalizable mensualmente,
+determine el valor de la prima unitaria y prima real que debe pagar María.
+
+```{r}
+Tabla3 = probs2lifetable(probs = SPPS2017M*(1-AaxM)^(2), 
+                         radix = 10^6,   
+                         type = "qx",  
+                         name = "Tabla3")
+TEM    = (5/12)/100
+TEA    = (1+TEM)^12-1
+a      = axn(Tabla3, x = 31, n = 32, i = TEA)
+npx    = pxt(Tabla3, x = 31, t = 32)
+a3132  = a - 1 + 1/(1+TEA)^32*npx
+a3132*15000 # 231484.5
+```
+
+4.- Un hombre sano de 35 años contrata un seguro de vida temporal de 20 años, diferido
+en 30 años, mediante el cual recibirá beneficios de 15 mil soles al inicio de cada año. Considerando una tasa anual de 1%, determine el valor de la prima unitaria y prima real que debe ser pagada.
+
+|---------------------------------------------------------------
+|                                                               |
+---------------------------------                               |
+|                                |                              |
+-----------------------          |                              |
+|                      |         |                              | 
+
+|----------------------|---------|------|-----------------------|-----|
+X=35                 x+m=65     x+m+1  x+m+2                  x+m+19 x+m+20 
+Poliza                 
+Prima                m=30        66      67                    84       85    
+
+Edad de referencia  35 años 
+
+\[ \Ax[m|]{\term{x}{n}}$  \]
+
+```{r}
+OFFSET <- 2
+HS2019 <- probs2lifetable(probs = SPPS2017H*((1-AaxH)^(OFFSET)), 
+                          radix = 10^6, type = "qx",  name = "HS2019")
+
+a <- axn(HS2019, x=35, m=30, n=20, i = 0.01   )
+a
+```
+```{r}
+a*15000
+```
+Segunda forma
+```{r}
+a <-  Exn(HS2019, x=35, n=30, i = 0.01 ) *axn(HS2019, x=65, n=20, i = 0.01 )
+a
+```
+
+```{r}
+a*15000
+```
+Tercera forma
+```{r}
+a <-  axn(HS2019, x=35, n=50, i = 0.01 ) - axn(HS2019, x=35, n=30, i = 0.01 )
+a
+```
+```{r}
+a*15000
+```
+5.- Un hombre sano de 35 años contrata un seguro de vida temporal de 20 años, diferido
+en 30 años, mediante el cual recibirá beneficios de 15 mil soles al final de cada año.
+Considerando una tasa anual de 1%, determine el valor de la prima unitaria y prima
+real que debe ser pagada.
+
+Soluci\'on 
+
+Como es un caso vencido no se puede usar Exn
+
+-----------------------------------------------------------------------
+|                                                                     |
+ ----------------------------------------------------------------     |
+|                                                               |     |
+---------------------------------                               |     |
+|                                |                              |     |
+-----------------------          |                              |     |
+|                      |         |                              |     |
+
+|----------------------|---------|------|-----------------------|-----|
+X=35                x+m=65       66     67                      84   85         
+Poliza
+Prima                m=30   
+
+    a   ___ =  E  .  a   ___
+ 30| 35:20|  30 35    65:20|
+
+                       ..              1
+            =   E  * ( a   ___ - 1 +  -------- *  p    )   
+             30  35     65:20|        (1+i)^20  20 65
+
+               Exn      axn                      pxt
+               
+```{r}
+OFFSET <- 2
+HS2019 <- probs2lifetable(probs = SPPS2017H*((1-AaxH)^(OFFSET)), 
+                          radix = 10^6, type = "qx",  name = "HS2019")
+
+E <- Exn(HS2019, x=35, n =30, i = 0.01   )
+a <- axn(HS2019, x=65, n =20, i = 0.01   )
+p <- pxt(HS2019, x=65, t =20)
+
+aa <- E*(a-1+(1/(1+0.01)^20)*p)
+aa*15000
+```
+Otra forma
+
+```{r}
+a1 <- axn(HS2019, x=35, n =50, i = 0.01   )
+p1 <- pxt(HS2019, x=35, t =50   )
+a2 <- axn(HS2019, x=35, n =30, i = 0.01   )
+p2 <- pxt(HS2019, x=35, t =30   )
+
+aa <- a1 + (1/(1+0.01)^50 )* p1 -a2 - (1/(1+0.01)^30)*p2
+aa*15000
+```
+
+6.- Lucía es una mujer inválida de 43 años, la cual un contrata un seguro por el que
+recibirá beneficios anuales de 18 mil soles de por vida, a partir del momento en el
+que cumple 48 años. Si la tasa efectiva considerada por la aseguradora es del 7%
+bianual, determine el valor de la prima unitaria y prima real que debe pagar Lucía
+
+
+7.- Simon es un hombre de 46 años y medio. Él contrata un seguro por el que recibirá
+beneficios semanales de 800 soles (cada año tiene 52 semanas) por un plazo
+máximo de 25 años y medio, desde el momento en el que cumple 56 años. Si la
+aseguradora trabaja con una tasa nominal trimestral de 0:5% capitalizable
+mensualmente, determine el valor de la prima unitaria y prima real que debe pagar
+Simon, si su tiempo de supervivencia viene dado por la siguiente función:
+
+SX(x) =
+
+1 􀀀
+x2
+1002
+0:4
+I(0;100)(x)
+
+
+```{r}
+TEM <- (0.5/3)/100
+TEA <- (1+TEM)^12-1
+TEA
+
+```
+
+```{r}
+d <- log(1+TEA)
+d
+
+```
+
+```{r}
+# Funcion de sobrevivencia
+S <- function(x){
+  
+    (1- x^2/100^2)^0.4
+}
+
+# Funcion a integrar
+f <- function(t){
+    exp(-d*t)*S(46.5+t)/S(46.5)
+}
+
+pu <-integrate(f, 9.5, 35)$value
+pu
+
+```
+
+
+```{r}
+prima <- pu * 800 *52
+prima
+```
+
+
+8. Una mujer inválida de 35 años contrata un seguro de vida completa, garantizado por
+15 años mediante el cual recibirá beneficios de 15 mil soles al inicio de cada año.
+Considerando una tasa anual de 1%, determine el valor de la prima unitaria y la
+prima real que debe ser pagada.
+
+
+```{r}
+OFFSET <- 2
+MI2019 <- probs2lifetable(probs = SPPI2017M*((1-AaxM)^(OFFSET)), 
+                          radix = 10^6, type = "qx",  name = "MI2019")
+
+```
+
+```{r}
+library(FinCal)
+
+```
+
+```{r}
+# pmt se pone igual a 1 por el tema de calcular la prima unitaria
+a1 <- pv.annuity(r = 0.01, n =  15, pmt = -1 , type = 1 )
+a1
+```
+```{r}
+a2 <-axn(MI2019, x = 35, m = 15, i = 0.01)
+a2
+```
+```{r}
+pu <- a1 + a2
+pu
+```
+
+```{r}
+pu*15000
+```
+

@@ -1,0 +1,62 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE}
+options(scipen=999)
+TablaSBS = read.table("TMSPP2017.txt",T)
+attach(TablaSBS)
+library(lifecontingencies)
+library(FinCal)
+```
+
+
+# Anualidad anticipada de vida completa
+
+Un hombre sano de 55 años (nacido en 1964) desea contratar un seguro de vida completa a fin de recibir anualidades de 18000 soles al inicio de cada año, considerando una TEA de $2\%$, calcule el valor de la prima bajo las siguientes condiciones:
+
+Suponga que vivirá 110 años.
+
+Calculo manual de la prima
+```{r}
+i = 0.02
+v = 1/(1+i)
+d = i*v
+n = 110 - 55
+a = (1 - v^n)/d
+a
+a*18000
+```
+Calculo con formula de la prima
+```{r}
+pv.annuity(r    = 0.02,      # tasa de interés efectiva anual
+           n    = 110 - 55,  # número de años
+           pmt  = -18000,    # anualidad
+           type = 1)         # anualidad anticipada
+```
+Suponga que está sujeto a morir según la tabla de mortalidad de la SBS.
+```{r}
+Tabla1 = probs2lifetable(probs = SPPS2017H*(1-AaxH)^(2), radix = 10^6,   type = "qx",  name = "Tabla 1")
+# EN el capitulo anterior se usaba Anx, ahora se usa anx para referirse
+# anualidades
+# Campos : tabla, edad y tasa de interes
+P = axn(Tabla1, x = 55, i = 0.02)
+P
+```
+```{r}
+18000*P
+
+```
+```{r}
+P = (1-Axn(Tabla1,x=55,i=0.02))/d
+P
+```
+```{r}
+18000*P
+```
+

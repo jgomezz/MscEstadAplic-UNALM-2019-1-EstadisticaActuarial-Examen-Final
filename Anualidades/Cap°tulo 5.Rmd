@@ -1,0 +1,217 @@
+---
+title: "Anualidades contingentes"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+options(scipen=999)
+TablaSBS = read.table("TMSPP2017.txt",T)
+attach(TablaSBS)
+library(lifecontingencies)
+library(FinCal)
+```
+
+# Anualidad anticipada de vida completa
+
+Un hombre sano de 55 años (nacido en 1964) desea contratar un seguro de vida completa a fin de recibir anualidades de 18000 soles al inicio de cada año, considerando una TEA de $2\%$, calcule el valor de la prima bajo las siguientes condiciones:
+
+Suponga que vivirá 110 años.
+```{r}
+i = 0.02
+v = 1/(1+i)
+d = i/(1+i)
+n = 55
+a = (1 - v^n)/d
+a
+a*18000
+```
+Suponga que está sujeto a morir según la tabla de mortalidad de la SBS.
+
+```{r}
+pv.annuity(r    = 0.02, # tasa de interés efectiva anual
+           n    = 55, # número de años
+           pmt  = -18000, # anualidad
+           type = 1) # anualidad anticipada
+
+
+Tabla1 = probs2lifetable(probs = SPPS2017H*(1-AaxH)^(2), radix = 10^6,   type = "qx",  name = "Tabla 1")
+```
+```{r}
+P = axn(Tabla1, x=55, i=0.02)
+P
+18000*P
+```
+
+```{r}
+P = (1-Axn(Tabla1,x=55,i=0.02))/d
+P
+18000*P
+```
+
+# Anualidad vencida de vida completa
+
+Una mujer inválida de 60 años (nacida en 1959) desea contratar un seguro de vida completa a fin de recibir pagos de 15000 soles al final de cada año, condicionales a su sobrevivencia. Considerando una TEA de $1.4\%$, calcule el valor de la prima bajo las siguientes condiciones:
+
+Suponga que vivirá 110 años.
+
+- Calculo manual
+```{r}
+i = 0.014
+v = 1/(1+i)
+d = i*v
+n = 110 -60
+a = (1 - v^n)/i
+a
+a*15000
+```
+
+- Calculo con funcion
+```{r}
+pv.annuity(r    = 0.014, # tasa de interés efectiva anual
+           n    = 110 - 60, # número de años
+           pmt  = -15000, # anualidad
+           type = 0) # anualidad anticipada
+```
+
+Suponga que la mujer esta sujeta a morir según la tabla de mortalidad de la SBS.
+```{r}
+Tabla2 = probs2lifetable(probs = SPPI2017M*(1-AaxM)^(2), radix = 10^6,   type = "qx",  name = "Tabla 2")
+P = axn(Tabla2, x=60, i=0.014) - 1
+P
+15000*P
+```
+
+```{r}
+P = (1-(1+i)*Axn(Tabla2,x=60,i=0.014))/i
+P
+15000*P
+```
+
+# Anualidad continua de vida completa
+
+Calcule el valor de la prima que debe pagar una persona de 43 años cuyo tiempo de vida puede ser explicado mediante la función de supervivencia:
+$$S(x) = 1 - \frac{x^{2.1}}{17209.57}$$
+para $0\leq x\leq104$, a fin de recibir 26 mil soles anuales (de manera continua, por ejemplo 500 soles semanales) mientras se encuentre vivo. Considere una TEA de $1\%$.
+
+```{r}
+ft  = function(t){2.1*(43+t)^1.1/(104^2.1-43^2.1)}
+integrate(ft,0,104-43)$value
+TEA = 0.01
+d   = log(1+TEA)
+VP  = function(t){exp(-d*t)*2.1*(43+t)^1.1/(104^2.1-43^2.1)}
+A = integrate(VP,0,104-43)$value
+A
+P = (1-A)/d
+P
+P*26000
+
+S = function(x){1-(x/104)^2.1}
+f = function(t){exp(-d*t)*S(43+t)/S(43)}
+P = integrate(f,0,104-43)$value
+P
+P*26000
+```
+
+
+# Anualidad anticipada temporal
+
+Un hombre sano de 52 años desea contratar un seguro de vida temporal de 30 años a fin de recibir anualidades de 15000 soles al inicio de cada año, considerando una TEA de $3\%$, calcule el valor de la prima bajo las siguientes condiciones:
+
+Suponga que el hombre vivirá con certeza, hasta los 82 años
+```{r}
+i = 0.03
+v = 1/(1+i)
+n = 30
+d = i*v
+a = (1 - v^n)/d
+a
+a*15000
+pv.annuity(r    = 0.03, # tasa de interés efectiva anual
+           n    = 30, # número de años
+           pmt  = -15000, # anualidad
+           type = 1) # anualidad anticipada
+```
+
+Suponga que el hombre está sujeto a morir según la tabla de mortalidad de la SBS.
+```{r}
+Tabla3 = probs2lifetable(probs = SPPS2017H*(1-AaxH)^(2), radix = 10^6,   type = "qx",  name = "Tabla 3")
+P = axn(Tabla3, x=52, n=30, i=0.03)
+P
+15000*P
+
+P = (1-AExn(Tabla3, x=52, n=30, i=0.03))/d
+P
+15000*P
+
+```
+
+
+# Anualidad vencida temporal
+
+Una mujer sana de 64 años desea contratar un seguro de vida temporal de 27 años a fin de recibir anualidades de 12 mil soles al final de cada año, considerando una TEA de $4\%$, calcule el valor de la prima bajo las siguientes condiciones:
+
+Suponga que la mujer vivirá, con certeza, 91 años.
+```{r}
+i = 0.04
+v = 1/(1+i)
+d = i*v
+n = 27
+a = (1 - v^n)/i
+a
+a*12000
+
+pv.annuity(r    = 0.04, # tasa de interés efectiva anual
+           n    = 27, # número de años
+           pmt  = -12000, # anualidad
+           type = 0) # anualidad vencida
+```
+
+Suponga que la mujer está sujeta a morir según la tabla de mortalidad de la SBS.
+```{r}
+Tabla4 = probs2lifetable(probs = SPPS2017M*(1-AaxM)^(2), radix = 10^6,   type = "qx",  name = "Tabla 4")
+P = axn(Tabla4, x=64, n=27, i=0.04) + 1/1.04^27*pxt(Tabla4,x=64,t=27) - 1
+P
+12000*P
+
+P = 1/0.04*(1-1.04*AExn(Tabla4, x=64, n=28, i=0.04))
+P
+12000*P
+```
+
+# Anualidades diferidas
+
+Un hombre inválido de 35 años contrata un seguro de vida completa diferido en 30 años, mediante el cual recibirá beneficios de 15 mil soles al inicio de cada año. Considerando una tasa anual de $1\%$, calcule el valor de la prima bajo las siguientes condiciones:
+
+Suponga que vivirá, con certeza, 110 años **(serían 45 pagos)**
+```{r}
+i = 0.01
+v = 1/(1+i)
+d = i/(1+i)
+n = 110 - 35 -30
+a = (1 - v^n)/d
+a
+a*15000
+
+pv.annuity(r    = 0.01, # tasa de interés efectiva anual
+           n    = 110 - 35 -30, # número de años
+           pmt  = -15000, # anualidad
+           type = 1) # anualidad anticipada
+```
+
+Suponga que está sujero a morir según la tabla de mortalidad de la SBS
+```{r}
+Tabla5 = probs2lifetable(probs = SPPI2017H*(1-AaxM)^(2), radix = 10^6,   type = "qx",  name = "Tabla 5")
+P = axn(Tabla5, x=35, m=30, i=0.01)
+P
+
+P = axn(Tabla5, x=35, i=0.01)- axn(Tabla5, x=35, n=30, i=0.01)
+P
+
+
+P*15000
+```
+
